@@ -5,3 +5,10 @@ __pycache__/
 .env
 *.log
 benchmark-results/
+
+# Generated packaging and editor files
+*.egg-info/
+*.swp
+
+# Local benchmark outputs
+benchmark-results/
