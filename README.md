@@ -261,9 +261,3 @@ Forge is a learning and portfolio project focused on local inference
 serving and measurement. The baseline implementation and local benchmark
 results are available; concurrent-load behavior should be measured on
 the target machine before making claims about production readiness.
-
-## License
-
-No license has been added yet. Add a `LICENSE` file before inviting
-reuse or contributions, and choose a license that matches your
-intentions.
