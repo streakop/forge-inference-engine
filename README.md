@@ -171,20 +171,11 @@ Results below were recorded on a MacBook Air M5 using
 measured runs per output length. These are machine-specific
 measurements, not universal performance claims.
 
-  ---------------------------------------------------------------------------------------
-    Requested       Runs         Mean  Mean TTFE      Runtime       Prompt           Peak
-       output              end-to-end              generation   processing   MLX-reported
-       length                 latency              throughput        speed         memory
-  ----------- ---------- ------------ ---------- ------------ ------------ --------------
-    32 tokens          5     0.2935 s   38.37 ms       128.65       675.89       0.938 GB
-                                                     tokens/s     tokens/s 
-
-   128 tokens          5     1.0696 s   39.76 ms       125.03       658.31       0.938 GB
-                                                     tokens/s     tokens/s 
-
-   256 tokens          5     2.1066 s   41.36 ms       124.39       636.82       0.938 GB
-                                                     tokens/s     tokens/s 
-  ---------------------------------------------------------------------------------------
+  | Requested output length | Runs | Mean end-to-end latency | Mean TTFE | Runtime generation throughput | Prompt processing speed | Peak MLX-reported memory |
+|:--|--:|--:|--:|--:|--:|--:|
+| 32 tokens | 5 | 0.2935 s | 38.37 ms | 128.65 tokens/s | 675.89 tokens/s | 0.938 GB |
+| 128 tokens | 5 | 1.0696 s | 39.76 ms | 125.03 tokens/s | 658.31 tokens/s | 0.938 GB |
+| 256 tokens | 5 | 2.1066 s | 41.36 ms | 124.39 tokens/s | 636.82 tokens/s | 0.938 GB |
 
 All 15 measured requests completed successfully. The benchmark observed
 2,080/2,080 text events with token IDs.
