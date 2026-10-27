@@ -1,0 +1,47 @@
+flowchart LR
+    Client["Client / CLI<br/>HTTP + JSON"]
+
+    subgraph API["FastAPI Application"]
+        Health["GET /health"]
+        Generate["POST /v1/generate<br/>JSON response"]
+        Stream["POST /v1/generate/stream<br/>SSE token stream"]
+    end
+
+    Lock["Generation Lock<br/>threading.Lock()"]
+
+    subgraph Runtime["MLX Runtime"]
+        Load["Load model + tokenizer"]
+        Gen["generate()"]
+        StreamGen["stream_generate()"]
+        Metrics["Latency · Tokens/s<br/>Prompt speed · Peak memory"]
+    end
+
+    Model["Qwen2.5-1.5B-Instruct-4bit<br/>MLX-LM"]
+    Hardware["Apple Silicon<br/>MacBook Air M5"]
+
+    Client --> Health
+    Client --> Generate
+    Client --> Stream
+
+    Generate --> Lock
+    Stream --> Lock
+    Lock --> Load
+    Load --> Model
+    Model --> Hardware
+
+    Load --> Gen
+    Load --> StreamGen
+    Gen --> Metrics
+    StreamGen --> Metrics
+
+    classDef client fill:#e8f3ff,stroke:#3984d6,color:#152b45
+    classDef api fill:#fff0f0,stroke:#db6666,color:#4a2020
+    classDef runtime fill:#fff4df,stroke:#d99b36,color:#493215
+    classDef model fill:#e7f8ef,stroke:#35a66c,color:#153e2b
+    classDef hardware fill:#e8f3ff,stroke:#3984d6,color:#152b45
+
+    class Client client
+    class Health,Generate,Stream api
+    class Lock,Load,Gen,StreamGen,Metrics runtime
+    class Model model
+    class Hardware hardware
