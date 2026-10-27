@@ -1,5 +1,6 @@
 
 import time
+import threading
 from collections.abc import Iterator
 from dataclasses import dataclass
 from mlx_lm import generate, load
@@ -24,6 +25,8 @@ class MLXRuntime:
         self.model_id = model_id
         self.model, self.tokenizer = load(model_id)
         self.loaded = True
+        # MLX model access is serialized until concurrent execution is explicitly supported.
+        self._generation_lock = threading.Lock()
 
     def generate(
         self,
@@ -36,14 +39,15 @@ class MLXRuntime:
 
         start = time.perf_counter()
 
-        text = generate(
-            self.model,
-            self.tokenizer,
-            prompt,
-            max_tokens=max_tokens,
-            sampler=sampler,
-            verbose=False,
-        )
+        with self._generation_lock:
+            text = generate(
+                self.model,
+                self.tokenizer,
+                prompt,
+                max_tokens=max_tokens,
+                sampler=sampler,
+                verbose=False,
+            )
 
         elapsed = time.perf_counter() - start
         completion_tokens = len(self.tokenizer.encode(text))
@@ -63,20 +67,21 @@ class MLXRuntime:
     def stream(self, prompt: str, max_tokens: int = 128, temperature: float = 0.2):
         sampler = make_sampler(temp=temperature)
 
-        for response in stream_generate(
-            self.model,
-            self.tokenizer,
-            prompt,
-            max_tokens=max_tokens,
-            sampler=sampler,
-        ):
-            yield TokenChunk(
-                text=response.text,
-                token_id=int(response.token) if response.token is not None else None,
-                prompt_tokens=response.prompt_tokens,
-                prompt_tps=response.prompt_tps,
-                generation_tokens=response.generation_tokens,
-                generation_tps=response.generation_tps,
-                peak_memory_gb=response.peak_memory,
-                finish_reason=response.finish_reason,
-            )
+        with self._generation_lock:
+            for response in stream_generate(
+                self.model,
+                self.tokenizer,
+                prompt,
+                max_tokens=max_tokens,
+                sampler=sampler,
+            ):
+                yield TokenChunk(
+                    text=response.text,
+                    token_id=int(response.token) if response.token is not None else None,
+                    prompt_tokens=response.prompt_tokens,
+                    prompt_tps=response.prompt_tps,
+                    generation_tokens=response.generation_tokens,
+                    generation_tps=response.generation_tps,
+                    peak_memory_gb=response.peak_memory,
+                    finish_reason=response.finish_reason,
+                )

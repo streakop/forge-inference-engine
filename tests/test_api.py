@@ -19,7 +19,7 @@ class FakeRuntime:
     def stream(self, prompt, max_tokens, temperature):
         from forge.runtime import TokenChunk
         yield TokenChunk(text="hello", token_id=1)
-        yield TokenChunk(text=" world", token_id=2)
+        yield TokenChunk(text=" world", token_id=2, prompt_tokens=2, prompt_tps=100.0, generation_tokens=2, generation_tps=50.0, peak_memory_gb=0.5, finish_reason="stop")
 
 
 client = TestClient(app)
@@ -62,3 +62,5 @@ def test_stream_returns_server_sent_events():
     assert "text/event-stream" in response.headers["content-type"]
     assert '"text": "hello"' in response.text
     assert '"done": true' in response.text
+    assert '"metrics"' in response.text
+    assert '"generation_tokens_per_second": 50.0' in response.text

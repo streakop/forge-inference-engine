@@ -3,9 +3,12 @@
 """Benchmark Forge's streaming inference API."""
 
 import argparse
+import csv
 import json
 import statistics
 import time
+from datetime import datetime, timezone
+from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -451,6 +454,16 @@ def main() -> None:
         help="Request timeout in seconds",
     )
     parser.add_argument(
+        "--json-out",
+        default=None,
+        help="Optional path to write all run results as JSON",
+    )
+    parser.add_argument(
+        "--csv-out",
+        default=None,
+        help="Optional path to write one row per measured request as CSV",
+    )
+    parser.add_argument(
         "--prompt",
         default=(
             "Explain how a local language model generates text, "
@@ -479,6 +492,8 @@ def main() -> None:
     if not lengths or any(length < 1 for length in lengths):
         parser.error("All token lengths must be positive integers")
 
+    all_rows = []
+
     for max_tokens in lengths:
         print(f"\n=== max_tokens={max_tokens} ===")
 
@@ -506,9 +521,69 @@ def main() -> None:
                 args.timeout,
             )
             results.append(result)
+            all_rows.append({
+                "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+                "base_url": args.url,
+                "max_tokens_requested": max_tokens,
+                "run": run_number,
+                "temperature": args.temperature,
+                "prompt": args.prompt,
+                **result,
+            })
             print_run_result(result, run_number)
 
         print_summary(results, max_tokens)
+
+    def json_safe(row: dict) -> dict:
+        return {
+            key: value
+            for key, value in row.items()
+            if key not in {"inter_event_times", "token_ids", "text"}
+        } | {
+            "inter_event_times": row["inter_event_times"],
+            "token_ids": row["token_ids"],
+            "text": row["text"],
+        }
+
+    if args.json_out:
+        output = Path(args.json_out)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(
+            json.dumps({
+                "created_at_utc": datetime.now(timezone.utc).isoformat(),
+                "model": "reported by Forge /health; see README for configured default",
+                "configuration": {
+                    "base_url": args.url,
+                    "runs": args.runs,
+                    "warmup": args.warmup,
+                    "lengths": lengths,
+                    "temperature": args.temperature,
+                    "prompt": args.prompt,
+                },
+                "results": [json_safe(row) for row in all_rows],
+            }, indent=2),
+            encoding="utf-8",
+        )
+        print(f"\nJSON results written to {output}")
+
+    if args.csv_out:
+        output = Path(args.csv_out)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        columns = [
+            "timestamp_utc", "base_url", "max_tokens_requested", "run",
+            "temperature", "total_latency_seconds", "ttfe_seconds",
+            "first_to_last_seconds", "observed_events", "event_rate_per_second",
+            "characters", "server_done", "runtime_metrics", "token_ids",
+        ]
+        with output.open("w", newline="", encoding="utf-8") as handle:
+            writer = csv.DictWriter(handle, fieldnames=columns, extrasaction="ignore")
+            writer.writeheader()
+            for row in all_rows:
+                flattened = dict(row)
+                flattened["runtime_metrics"] = json.dumps(row["runtime_metrics"])
+                flattened["token_ids"] = json.dumps(row["token_ids"])
+                writer.writerow(flattened)
+        print(f"CSV results written to {output}")
 
 
 if __name__ == "__main__":
